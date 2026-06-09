@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../../core/themes/app_colors.dart';
 import '../../core/themes/app_dimensions.dart';
 
@@ -36,8 +38,12 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigateAfterDelay() async {
     await Future.delayed(const Duration(seconds: 3));
-    if (mounted) {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    if (auth.isLoggedIn) {
       Navigator.of(context).pushReplacementNamed('/main');
+    } else {
+      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 

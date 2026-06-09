@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/notifications_provider.dart';
 import '../widgets/app_drawer.dart';
 import 'home_page.dart';
+import 'children_page.dart';
 import 'notifications_page.dart';
 import 'profile_page.dart';
-import '../../core/themes/app_colors.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});
@@ -19,8 +19,16 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   final List<Widget> _pages = const [
     HomePage(),
+    ChildrenPage(),
     NotificationsPage(),
     ProfilePage(),
+  ];
+
+  final List<String> _titles = const [
+    'الرئيسية',
+    'الطلاب',
+    'الإشعارات',
+    'الملف الشخصي',
   ];
 
   @override
@@ -34,39 +42,17 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _currentIndex == 2
+      appBar: _currentIndex == 3
           ? null
           : AppBar(
-              title: const Text('مسارات'),
+              title: Text(_titles[_currentIndex]),
               centerTitle: true,
               actions: [
-                if (_currentIndex == 0)
+                if (_currentIndex == 1)
                   IconButton(
-                    icon: Stack(
-                      children: [
-                        const Icon(Icons.receipt_long),
-                        if (context.watch<NotificationsProvider>().unreadCount >
-                            0)
-                          Positioned(
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: AppColors.error,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '${context.watch<NotificationsProvider>().unreadCount}',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    onPressed: () => setState(() => _currentIndex = 1),
+                    icon: const Icon(Icons.person_add),
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed('/add-child'),
                   ),
               ],
             ),
@@ -80,6 +66,11 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'الرئيسية',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'الطلاب',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications_outlined),

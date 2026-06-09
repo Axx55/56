@@ -1,4 +1,9 @@
 class FieldNamingHelper {
+  static String enumName(Enum value) {
+    final s = value.toString();
+    return s.substring(s.indexOf('.') + 1);
+  }
+
   static String getGenderLabel(String? gender) {
     switch (gender) {
       case 'male':

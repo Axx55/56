@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../../core/themes/app_colors.dart';
 
@@ -7,6 +8,13 @@ class ChildImagePicker extends StatelessWidget {
   final VoidCallback onPick;
 
   const ChildImagePicker({super.key, this.imagePath, required this.onPick});
+
+  Widget _buildImage(String path) {
+    if (kIsWeb) {
+      return const Icon(Icons.image, size: 48, color: AppColors.textHint);
+    }
+    return Image.file(File(path), fit: BoxFit.cover, width: 120, height: 120);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,14 +29,7 @@ class ChildImagePicker extends StatelessWidget {
           border: Border.all(color: AppColors.border),
         ),
         child: imagePath != null
-            ? ClipOval(
-                child: Image.file(
-                  File(imagePath!),
-                  fit: BoxFit.cover,
-                  width: 120,
-                  height: 120,
-                ),
-              )
+            ? ClipOval(child: _buildImage(imagePath!))
             : const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

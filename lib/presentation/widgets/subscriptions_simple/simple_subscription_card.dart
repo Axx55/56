@@ -34,7 +34,7 @@ class SimpleSubscriptionCard extends StatelessWidget {
           child: Icon(Icons.subscriptions, color: _getStatusColor()),
         ),
         title: Text(
-          'اشتراك ${FieldNamingHelper.getSubscriptionPeriodLabel(subscription.period.name)}',
+          'اشتراك ${FieldNamingHelper.getSubscriptionPeriodLabel(FieldNamingHelper.enumName(subscription.period))}',
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
@@ -55,7 +55,9 @@ class SimpleSubscriptionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            FieldNamingHelper.getStatusLabel(subscription.status.name),
+            FieldNamingHelper.getStatusLabel(
+              FieldNamingHelper.enumName(subscription.status),
+            ),
             style: TextStyle(
               color: _getStatusColor(),
               fontSize: 12,

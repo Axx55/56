@@ -6,7 +6,7 @@ import '../../domain/repositories/parent_repository.dart';
 
 class ParentProfileProvider extends ChangeNotifier {
   final ParentRepository _repository;
-  final SupabaseClient _supabase;
+  final SupabaseClient? _supabase;
   Parent? _profile;
   bool _isLoading = false;
   String? _error;
@@ -41,6 +41,7 @@ class ParentProfileProvider extends ChangeNotifier {
   }
 
   Future<String?> updateAvatar(String userId, String imagePath) async {
+    if (_supabase == null) return null;
     try {
       final fileExt = imagePath.split('.').last;
       final filePath = 'avatars/$userId.$fileExt';

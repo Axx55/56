@@ -2,21 +2,24 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_service_base.dart';
 
 class PhoneAuthService extends AuthServiceBase {
-  PhoneAuthService(super.supabase);
+  PhoneAuthService({required SupabaseClient supabase})
+    : super(supabase: supabase);
+
+  SupabaseClient get _client => supabase!;
 
   @override
   Future<AuthResponse> signIn(String phone, String password) async {
-    return supabase.auth.signInWithPassword(phone: phone, password: password);
+    return _client.auth.signInWithPassword(phone: phone, password: password);
   }
 
   @override
-  Future<void> signOut() => supabase.auth.signOut();
+  Future<void> signOut() => _client.auth.signOut();
 
   @override
-  Session? get currentSession => supabase.auth.currentSession;
+  Session? get currentSession => _client.auth.currentSession;
 
   @override
-  User? get currentUser => supabase.auth.currentUser;
+  User? get currentUser => _client.auth.currentUser;
 
   @override
   bool get isLoggedIn => currentUser != null;
@@ -28,6 +31,6 @@ class PhoneAuthService extends AuthServiceBase {
 
   @override
   Future<void> updatePassword(String newPassword) async {
-    await supabase.auth.updateUser(UserAttributes(password: newPassword));
+    await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 }

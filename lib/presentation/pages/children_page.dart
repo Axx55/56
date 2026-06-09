@@ -3,10 +3,11 @@ import 'package:provider/provider.dart';
 import '../providers/students_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/shared/loading_widget.dart';
-import '../widgets/shared/empty_state_widget.dart';
 import '../widgets/shared/error_widget.dart';
 import '../widgets/student_card.dart';
 import '../../core/themes/app_colors.dart';
+import '../../core/themes/app_dimensions.dart';
+import '../../domain/entities/student.dart';
 
 class ChildrenPage extends StatefulWidget {
   const ChildrenPage({super.key});
@@ -34,42 +35,76 @@ class _ChildrenPageState extends State<ChildrenPage> {
   @override
   Widget build(BuildContext context) {
     final studentsProvider = context.watch<StudentsProvider>();
+    final accepted = studentsProvider.students
+        .where((s) => s.status == StudentStatus.active)
+        .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('أبنائي')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).pushNamed('/add-child'),
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      body: _buildBody(studentsProvider),
+      body: _buildBody(studentsProvider, accepted),
+      floatingActionButton: accepted.isNotEmpty
+          ? FloatingActionButton(
+              onPressed: () => Navigator.of(context).pushNamed('/add-child'),
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
     );
   }
 
-  Widget _buildBody(StudentsProvider provider) {
+  Widget _buildBody(StudentsProvider provider, List<Student> accepted) {
     if (provider.isLoading) {
       return const LoadingWidget(message: 'جاري تحميل البيانات...');
     }
     if (provider.error != null) {
       return AppErrorWidget(message: provider.error, onRetry: _loadStudents);
     }
-    if (provider.students.isEmpty) {
-      return EmptyStateWidget(
-        icon: Icons.people_outline,
-        title: 'لا يوجد أبناء',
-        subtitle: 'قم بإضافة أبنائك للاستفادة من خدمة النقل المدرسي',
-        actionLabel: 'إضافة ابن',
-        onAction: () => Navigator.of(context).pushNamed('/add-child'),
+    if (accepted.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 80, color: AppColors.textHint),
+            const SizedBox(height: 16),
+            const Text(
+              'لا يوجد طلاب بعد',
+              style: TextStyle(
+                fontSize: AppDimensions.fontMd,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(context).pushNamed('/add-child'),
+              icon: const Icon(Icons.add),
+              label: const Text('إضافة طالب'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     }
     return RefreshIndicator(
       onRefresh: _loadStudents,
       child: ListView.builder(
-        itemCount: provider.students.length,
+        padding: const EdgeInsets.only(
+          top: AppDimensions.paddingSm,
+          bottom: 80,
+        ),
+        itemCount: accepted.length,
         itemBuilder: (context, index) {
           return StudentCard(
-            student: provider.students[index],
-            onTap: () => _showStudentDetails(context, provider.students[index]),
+            student: accepted[index],
+            onTap: () => _showStudentDetails(context, accepted[index]),
           );
         },
       ),
@@ -114,7 +149,6 @@ class _ChildrenPageState extends State<ChildrenPage> {
               'المرحلة',
               student.educationLevelId ?? 'غير محدد',
             ),
-            _buildDetailRow(Icons.info, 'الحالة', student.status.name),
           ],
         ),
       ),

@@ -36,17 +36,27 @@ class NotificationsProvider extends ChangeNotifier {
     await _repository.markAsRead(id);
     final index = _notifications.indexWhere((n) => n.id == id);
     if (index != -1) {
-      _notifications[index] = AppNotification(
-        id: _notifications[index].id,
-        userId: _notifications[index].userId,
-        type: _notifications[index].type,
-        title: _notifications[index].title,
-        body: _notifications[index].body,
-        isRead: true,
-        relatedId: _notifications[index].relatedId,
-        relatedType: _notifications[index].relatedType,
-        createdAt: _notifications[index].createdAt,
-      );
+      final updated = <AppNotification>[];
+      for (final n in _notifications) {
+        if (n.id == id) {
+          updated.add(
+            AppNotification(
+              id: n.id,
+              userId: n.userId,
+              type: n.type,
+              title: n.title,
+              body: n.body,
+              isRead: true,
+              relatedId: n.relatedId,
+              relatedType: n.relatedType,
+              createdAt: n.createdAt,
+            ),
+          );
+        } else {
+          updated.add(n);
+        }
+      }
+      _notifications = updated;
       _unreadCount = (_unreadCount - 1).clamp(0, _unreadCount);
       notifyListeners();
     }

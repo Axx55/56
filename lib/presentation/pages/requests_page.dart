@@ -9,6 +9,7 @@ import '../../core/themes/app_colors.dart';
 import '../../core/themes/app_dimensions.dart';
 import '../../core/helpers/field_naming_helper.dart';
 import '../../core/utils/time_formatter.dart';
+import '../../domain/entities/add_child_request.dart';
 
 class RequestsPage extends StatefulWidget {
   const RequestsPage({super.key});
@@ -71,14 +72,12 @@ class _RequestsPageState extends State<RequestsPage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _getStatusColor(
-                    request.status.name,
-                  ).withValues(alpha: 0.1),
+                  color: _getStatusColor(request.status).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
                 ),
                 child: Icon(
-                  _getStatusIcon(request.status.name),
-                  color: _getStatusColor(request.status.name),
+                  _getStatusIcon(request.status),
+                  color: _getStatusColor(request.status),
                 ),
               ),
               title: Text(
@@ -89,7 +88,7 @@ class _RequestsPageState extends State<RequestsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'الحالة: ${FieldNamingHelper.getStatusLabel(request.status.name)}',
+                    'الحالة: ${FieldNamingHelper.getStatusLabel(FieldNamingHelper.enumName(request.status))}',
                   ),
                   if (request.createdAt != null)
                     Text(
@@ -153,24 +152,24 @@ class _RequestsPageState extends State<RequestsPage> {
     );
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(RequestStatus status) {
     switch (status) {
-      case 'approved':
+      case RequestStatus.approved:
         return AppColors.success;
-      case 'rejected':
+      case RequestStatus.rejected:
         return AppColors.error;
-      default:
+      case RequestStatus.pending:
         return AppColors.pending;
     }
   }
 
-  IconData _getStatusIcon(String status) {
+  IconData _getStatusIcon(RequestStatus status) {
     switch (status) {
-      case 'approved':
+      case RequestStatus.approved:
         return Icons.check_circle;
-      case 'rejected':
+      case RequestStatus.rejected:
         return Icons.cancel;
-      default:
+      case RequestStatus.pending:
         return Icons.hourglass_empty;
     }
   }
@@ -206,7 +205,9 @@ class _RequestsPageState extends State<RequestsPage> {
             _row('الطالب', request.studentName ?? 'غير محدد'),
             _row(
               'الحالة',
-              FieldNamingHelper.getStatusLabel(request.status.name),
+              FieldNamingHelper.getStatusLabel(
+                FieldNamingHelper.enumName(request.status),
+              ),
             ),
             if (request.rejectionReason != null)
               _row('سبب الرفض', request.rejectionReason!),

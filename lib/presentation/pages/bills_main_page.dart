@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/bills_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/shared/loading_widget.dart';
@@ -8,6 +9,9 @@ import '../../core/themes/app_colors.dart';
 import '../../core/themes/app_dimensions.dart';
 import '../../core/helpers/field_naming_helper.dart';
 import '../../core/utils/time_formatter.dart';
+import '../../domain/entities/bill.dart';
+import '../../domain/entities/bank.dart';
+import '../../core/services/mock/mock_data_store.dart';
 
 class BillsMainPage extends StatefulWidget {
   const BillsMainPage({super.key});
@@ -131,14 +135,16 @@ class _BillsMainPageState extends State<BillsMainPage>
                         ),
                         decoration: BoxDecoration(
                           color: _getStatusColor(
-                            bill.status.name,
+                            bill.status,
                           ).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          FieldNamingHelper.getStatusLabel(bill.status.name),
+                          FieldNamingHelper.getStatusLabel(
+                            FieldNamingHelper.enumName(bill.status),
+                          ),
                           style: TextStyle(
-                            color: _getStatusColor(bill.status.name),
+                            color: _getStatusColor(bill.status),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -210,69 +216,234 @@ class _BillsMainPageState extends State<BillsMainPage>
     );
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(BillStatus status) {
     switch (status) {
-      case 'paid':
+      case BillStatus.paid:
         return AppColors.success;
-      case 'overdue':
-        return AppColors.overdue;
-      case 'pending':
-        return AppColors.pending;
-      default:
-        return AppColors.textHint;
+      case BillStatus.pending:
+        return AppColors.warning;
+      case BillStatus.overdue:
+        return Colors.red;
+      case BillStatus.cancelled:
+        return AppColors.textSecondary;
     }
   }
 
   void _showPaymentSheet(BuildContext context, dynamic bill) {
+    final banks = MockDataStore.banks;
+    String? selectedBankId;
+    XFile? receiptImage;
+    bool isSubmitting = false;
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'تفاصيل الدفع',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('المبلغ'),
-                Text(
-                  TimeFormatter.formatCurrency(bill.amount),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: AppDimensions.buttonHeight,
-              child: ElevatedButton(
-                onPressed: () => context.read<BillsProvider>().payBill(bill.id),
-                child: const Text('تأكيد الدفع'),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              const Text(
+                'تفاصيل الدفع',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('المبلغ'),
+                  Text(
+                    TimeFormatter.formatCurrency(bill.amount),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'اختر البنك',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: selectedBankId,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
+                ),
+                hint: const Text('اختر البنك'),
+                items: banks
+                    .map(
+                      (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+                    )
+                    .toList(),
+                onChanged: (v) => setSheetState(() => selectedBankId = v),
+              ),
+              if (selectedBankId != null) ...[
+                const SizedBox(height: 12),
+                _buildBankDetails(
+                  banks.firstWhere((b) => b.id == selectedBankId),
+                ),
+              ],
+              const SizedBox(height: 16),
+              const Text(
+                'إرفاق صورة السداد',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final picker = ImagePicker();
+                    final image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                    );
+                    if (image != null) {
+                      setSheetState(() => receiptImage = image);
+                    }
+                  },
+                  icon: Icon(
+                    receiptImage != null
+                        ? Icons.check_circle
+                        : Icons.add_photo_alternate,
+                    color: receiptImage != null ? AppColors.success : null,
+                  ),
+                  label: Text(
+                    receiptImage != null
+                        ? 'تم اختيار الصورة'
+                        : 'اختيار صورة من المعرض',
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: AppDimensions.buttonHeight,
+                child: ElevatedButton(
+                  onPressed:
+                      isSubmitting ||
+                          selectedBankId == null ||
+                          receiptImage == null
+                      ? null
+                      : () async {
+                          setSheetState(() => isSubmitting = true);
+                          await context.read<BillsProvider>().payBill(
+                            bill.id,
+                            paymentMethod: selectedBankId,
+                            receiptUrl: receiptImage!.path,
+                          );
+                          if (ctx.mounted) Navigator.of(ctx).pop();
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'تأكيد الدفع',
+                          style: TextStyle(fontSize: AppDimensions.fontMd),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBankDetails(Bank bank) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.primaryLight.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(bank.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          if (bank.accountName != null)
+            _detailRow('اسم الحساب', bank.accountName!),
+          if (bank.accountNumber != null)
+            _detailRow('رقم الحساب', bank.accountNumber!),
+          if (bank.iban != null) _detailRow('IBAN', bank.iban!),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

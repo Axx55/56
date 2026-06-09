@@ -44,15 +44,16 @@ class BillsProvider extends ChangeNotifier {
     return _bills;
   }
 
-  List<Bill> get unpaidBills =>
-      _bills.where((b) => b.status.name == 'pending').toList();
+  List<Bill> get unpaidBills => _bills
+      .where((b) => b.status == BillStatus.pending && b.paidAt == null)
+      .toList();
 
   List<Bill> get underReviewBills => _bills
-      .where((b) => b.status.name == 'pending' && b.paidAt != null)
+      .where((b) => b.status == BillStatus.pending && b.paidAt != null)
       .toList();
 
   List<Bill> get paidBills =>
-      _bills.where((b) => b.status.name == 'paid').toList();
+      _bills.where((b) => b.status == BillStatus.paid).toList();
 
   Future<void> payBill(
     String billId, {

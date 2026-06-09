@@ -8,6 +8,7 @@ import '../widgets/shared/error_widget.dart';
 import '../../core/themes/app_colors.dart';
 import '../../core/themes/app_dimensions.dart';
 import '../../core/utils/time_formatter.dart';
+import '../../domain/entities/notification.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -87,7 +88,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Widget _buildNotificationCard(
     BuildContext context,
-    dynamic notification,
+    AppNotification notification,
     NotificationsProvider provider,
   ) {
     return Card(
@@ -101,11 +102,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _getTypeColor(
-            notification.type.name,
+            notification.type,
           ).withValues(alpha: 0.1),
           child: Icon(
-            _getTypeIcon(notification.type.name),
-            color: _getTypeColor(notification.type.name),
+            _getTypeIcon(notification.type),
+            color: _getTypeColor(notification.type),
             size: 20,
           ),
         ),
@@ -155,25 +156,51 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  Color _getTypeColor(String type) {
-    if (type.contains('bill')) return AppColors.warning;
-    if (type.contains('child') || type.contains('request'))
-      return AppColors.primary;
-    if (type.contains('subscription')) return AppColors.success;
-    return AppColors.textSecondary;
+  Color _getTypeColor(NotificationType type) {
+    switch (type) {
+      case NotificationType.billPaymentConfirmed:
+      case NotificationType.billPaymentRejected:
+      case NotificationType.billCreated:
+      case NotificationType.billOverdue:
+        return AppColors.warning;
+      case NotificationType.childRequestApproved:
+      case NotificationType.childRequestRejected:
+      case NotificationType.childRequestPending:
+        return AppColors.primary;
+      case NotificationType.subscriptionActivated:
+      case NotificationType.subscriptionExpired:
+      case NotificationType.subscriptionCancelled:
+        return AppColors.success;
+      default:
+        return AppColors.textSecondary;
+    }
   }
 
-  IconData _getTypeIcon(String type) {
-    if (type.contains('bill')) return Icons.receipt;
-    if (type.contains('child') || type.contains('request')) return Icons.person;
-    if (type.contains('subscription')) return Icons.subscriptions;
-    if (type.contains('trip')) return Icons.directions_bus;
-    return Icons.notifications;
+  IconData _getTypeIcon(NotificationType type) {
+    switch (type) {
+      case NotificationType.billPaymentConfirmed:
+      case NotificationType.billPaymentRejected:
+      case NotificationType.billCreated:
+      case NotificationType.billOverdue:
+        return Icons.receipt;
+      case NotificationType.childRequestApproved:
+      case NotificationType.childRequestRejected:
+      case NotificationType.childRequestPending:
+        return Icons.person;
+      case NotificationType.subscriptionActivated:
+      case NotificationType.subscriptionExpired:
+      case NotificationType.subscriptionCancelled:
+        return Icons.subscriptions;
+      case NotificationType.tripUpdate:
+        return Icons.directions_bus;
+      default:
+        return Icons.notifications;
+    }
   }
 
   void _handleNotificationNavigation(
     BuildContext context,
-    dynamic notification,
+    AppNotification notification,
   ) {
     if (notification.relatedType == 'bill') {
       Navigator.of(context).pushNamed('/bills');

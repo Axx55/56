@@ -8,3 +8,18 @@ CREATE TABLE IF NOT EXISTS public.parents_profile (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
+
+-- Trigger لتحديث updated_at تلقائياً
+CREATE OR REPLACE FUNCTION public.update_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_parents_profile_updated_at
+    BEFORE UPDATE ON public.parents_profile
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();

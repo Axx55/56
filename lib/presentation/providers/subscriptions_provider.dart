@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/subscription.dart';
 import '../../data/services/subscriptions_service.dart';
+import '../../core/helpers/field_naming_helper.dart';
 
 class SubscriptionsProvider extends ChangeNotifier {
   final SubscriptionsService _service;
@@ -34,6 +35,8 @@ class SubscriptionsProvider extends ChangeNotifier {
 
   List<Subscription> getFilteredSubscriptions(String? statusFilter) {
     if (statusFilter == null || statusFilter == 'all') return _subscriptions;
-    return _subscriptions.where((s) => s.status.name == statusFilter).toList();
+    return _subscriptions
+        .where((s) => FieldNamingHelper.enumName(s.status) == statusFilter)
+        .toList();
   }
 }

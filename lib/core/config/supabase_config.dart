@@ -20,6 +20,7 @@ class SupabaseConfig {
   static const String tableStudyDays = 'study_days';
   static const String tableBatchBills = 'batch_bills';
   static const String tableBanks = 'banks';
+  static const String tableDrivers = 'drivers';
   static const String tableComplaints = 'complaints';
   static const String tableTripRecords = 'trip_records';
   static const String tableRatings = 'ratings';

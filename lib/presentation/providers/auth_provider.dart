@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/auth_service/auth_service_base.dart';
-import '../../core/services/auth_service/email_auth_service.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
 
@@ -11,8 +10,7 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   String? _error;
 
-  AuthProvider(SupabaseClient supabase)
-    : _authService = EmailAuthService(supabase) {
+  AuthProvider(this._authService) {
     _user = _authService.currentUser;
     _status = _user != null
         ? AuthStatus.authenticated

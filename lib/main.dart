@@ -4,13 +4,15 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/app_config.dart';
+import 'core/services/auth_service/auth_service_base.dart';
+import 'core/services/auth_service/email_auth_service.dart';
+import 'core/services/mock/mock_auth_service.dart';
+import 'core/services/mock/mock_repositories.dart';
 import 'core/themes/app_theme.dart';
-import 'data/services/student_service.dart';
 import 'data/services/subscriptions_service.dart';
 import 'data/services/bill_service.dart';
 import 'data/services/requests_service.dart';
 import 'data/services/notification_service.dart';
-import 'data/services/lookup_service.dart';
 import 'data/services/database_service.dart';
 import 'data/repositories/students_repository_impl.dart';
 import 'data/repositories/parent_repository_impl.dart';
@@ -18,6 +20,8 @@ import 'data/repositories/bills_repository_impl.dart';
 import 'data/repositories/requests_repository_impl.dart';
 import 'data/repositories/notifications_repository_impl.dart';
 import 'data/repositories/cities_repository_impl.dart';
+import 'data/services/lookup_service.dart';
+import 'data/services/student_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/students_provider.dart';
 import 'presentation/providers/subscriptions_provider.dart';
@@ -42,64 +46,153 @@ import 'presentation/pages/new_complaint_page.dart';
 import 'presentation/pages/ratings_page.dart';
 import 'presentation/pages/all_trips_page.dart';
 import 'presentation/pages/terms_and_conditions_page.dart';
+import 'presentation/pages/login_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: AppConfig.supabaseUrl,
-    publishableKey: AppConfig.supabaseAnonKey,
+  bool useMock = AppConfig.useMock;
+
+  AuthServiceBase authService;
+  late StudentsRepositoryImpl studentsRepo;
+  late BillsRepositoryImpl billsRepo;
+  late RequestsRepositoryImpl requestsRepo;
+  late NotificationsRepositoryImpl notifsRepo;
+  late CitiesRepositoryImpl citiesRepo;
+
+  if (!useMock) {
+    try {
+      await Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        publishableKey: AppConfig.supabaseAnonKey,
+      );
+
+      final supabase = Supabase.instance.client;
+      final dbService = DatabaseService.instance;
+
+      authService = EmailAuthService(supabase: supabase);
+      studentsRepo = StudentsRepositoryImpl(StudentService(supabase));
+      billsRepo = BillsRepositoryImpl(BillService(supabase));
+      requestsRepo = RequestsRepositoryImpl(RequestsService(supabase));
+      notifsRepo = NotificationsRepositoryImpl(NotificationService(supabase));
+      citiesRepo = CitiesRepositoryImpl(LookupService(supabase));
+
+      runApp(
+        _buildApp(
+          authService,
+          studentsRepo,
+          billsRepo,
+          requestsRepo,
+          notifsRepo,
+          citiesRepo,
+          supabase,
+          dbService,
+        ),
+      );
+      return;
+    } catch (_) {
+      useMock = true;
+    }
+  }
+
+  if (useMock) {
+    authService = MockAuthService();
+    final mockStudentsRepo = MockStudentsRepository();
+    final mockBillsRepo = MockBillsRepository();
+    final mockRequestsRepo = MockRequestsRepository();
+    final mockNotifsRepo = MockNotificationsRepository();
+    final mockCitiesRepo = MockCitiesRepository();
+
+    runApp(
+      _buildAppMock(
+        authService,
+        mockStudentsRepo,
+        mockBillsRepo,
+        mockRequestsRepo,
+        mockNotifsRepo,
+        mockCitiesRepo,
+      ),
+    );
+  }
+}
+
+MultiProvider _buildApp(
+  AuthServiceBase authService,
+  StudentsRepositoryImpl studentsRepo,
+  BillsRepositoryImpl billsRepo,
+  RequestsRepositoryImpl requestsRepo,
+  NotificationsRepositoryImpl notifsRepo,
+  CitiesRepositoryImpl citiesRepo,
+  dynamic supabase,
+  DatabaseService dbService,
+) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
+      ChangeNotifierProvider(create: (_) => UserTypeProvider()),
+      ChangeNotifierProvider(create: (_) => StudentsProvider(studentsRepo)),
+      ChangeNotifierProvider(
+        create: (_) => SubscriptionsProvider(SubscriptionsService(supabase)),
+      ),
+      ChangeNotifierProvider(create: (_) => BillsProvider(billsRepo)),
+      ChangeNotifierProvider(create: (_) => RequestsProvider(requestsRepo)),
+      ChangeNotifierProvider(create: (_) => NotificationsProvider(notifsRepo)),
+      ChangeNotifierProvider(
+        create: (_) =>
+            ParentProfileProvider(ParentRepositoryImpl(dbService), supabase),
+      ),
+      ChangeNotifierProvider(create: (_) => TransportPlanProvider(citiesRepo)),
+      ChangeNotifierProvider(
+        create: (_) => AddChildWizardProvider(
+          studentsRepo: studentsRepo,
+          requestsRepo: requestsRepo,
+        ),
+      ),
+      ChangeNotifierProvider(create: (_) => LocationProvider()),
+    ],
+    child: const MasaratApp(),
   );
+}
 
-  final supabase = Supabase.instance.client;
-  final dbService = DatabaseService.instance;
+MultiProvider _buildAppMock(
+  AuthServiceBase authService,
+  MockStudentsRepository mockStudentsRepo,
+  MockBillsRepository mockBillsRepo,
+  MockRequestsRepository mockRequestsRepo,
+  MockNotificationsRepository mockNotifsRepo,
+  MockCitiesRepository mockCitiesRepo,
+) {
+  final mockSubsService = MockSubscriptionsService();
+  final mockParentRepo = MockParentRepository();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider(supabase)),
-        ChangeNotifierProvider(create: (_) => UserTypeProvider()),
-        ChangeNotifierProvider(
-          create: (_) => StudentsProvider(
-            StudentsRepositoryImpl(StudentService(supabase)),
-          ),
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
+      ChangeNotifierProvider(create: (_) => UserTypeProvider()),
+      ChangeNotifierProvider(create: (_) => StudentsProvider(mockStudentsRepo)),
+      ChangeNotifierProvider(
+        create: (_) => SubscriptionsProvider(mockSubsService),
+      ),
+      ChangeNotifierProvider(create: (_) => BillsProvider(mockBillsRepo)),
+      ChangeNotifierProvider(create: (_) => RequestsProvider(mockRequestsRepo)),
+      ChangeNotifierProvider(
+        create: (_) => NotificationsProvider(mockNotifsRepo),
+      ),
+      ChangeNotifierProvider(
+        create: (_) => ParentProfileProvider(mockParentRepo, null),
+      ),
+      ChangeNotifierProvider(
+        create: (_) => TransportPlanProvider(mockCitiesRepo),
+      ),
+      ChangeNotifierProvider(
+        create: (_) => AddChildWizardProvider(
+          studentsRepo: mockStudentsRepo,
+          requestsRepo: mockRequestsRepo,
         ),
-        ChangeNotifierProvider(
-          create: (_) => SubscriptionsProvider(SubscriptionsService(supabase)),
-        ),
-        ChangeNotifierProvider(
-          create: (_) =>
-              BillsProvider(BillsRepositoryImpl(BillService(supabase))),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => RequestsProvider(
-            RequestsRepositoryImpl(RequestsService(supabase)),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => NotificationsProvider(
-            NotificationsRepositoryImpl(NotificationService(supabase)),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) =>
-              ParentProfileProvider(ParentRepositoryImpl(dbService), supabase),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => TransportPlanProvider(
-            CitiesRepositoryImpl(LookupService(supabase)),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => AddChildWizardProvider(
-            studentsRepo: StudentsRepositoryImpl(StudentService(supabase)),
-            requestsRepo: RequestsRepositoryImpl(RequestsService(supabase)),
-          ),
-        ),
-        ChangeNotifierProvider(create: (_) => LocationProvider()),
-      ],
-      child: const MasaratApp(),
-    ),
+      ),
+      ChangeNotifierProvider(create: (_) => LocationProvider()),
+    ],
+    child: const MasaratApp(),
   );
 }
 
@@ -122,6 +215,8 @@ class MasaratApp extends StatelessWidget {
       home: const SplashScreen(),
       onGenerateRoute: (settings) {
         switch (settings.name) {
+          case '/login':
+            return MaterialPageRoute(builder: (_) => const LoginPage());
           case '/main':
             return MaterialPageRoute(
               builder: (_) => const MainNavigationPage(),
